@@ -133,7 +133,7 @@ Enable **Record GPU history** in `General` settings, then expand **GPU history b
 user** under a server in the menu bar popover or open the `History` settings tab.
 Choose a GPU and a 1h, 5h, 12h, or 24h window; click or drag the chart to inspect a
 sample. The legend shows each user's sampled value above the stacked areas, with a
-dashed line for total GPU utilization.
+thin solid line for total GPU utilization.
 
 Recording is off by default. Enabling it adds one `nvidia-smi pmon -s u -c 1` query
 and a PID owner lookup to each SSH refresh; no remote installation or privileged
@@ -142,6 +142,14 @@ sampling. Minute averages are retained locally for 24 hours under
 `~/Library/Application Support/com.leejaein.NVBeacon/GPUHistory/`, with private file
 permissions, and survive app restarts. Turning recording off preserves existing
 history without adding new samples. Earlier history cannot be reconstructed.
+
+The 1h view retains minute detail; 5h, 12h, and 24h use 3-, 6-, and 12-minute
+means. Incomplete intervals retain minute detail. Hover values match the plotted
+averages and update without rebuilding chart geometry. Time-range changes use a
+short eased transition and respect Reduce Motion. During continuous refreshes,
+measured points up to three minutes apart may connect across short per-user
+sampling dropouts; missing readings still show as unavailable. Offline and longer
+gaps stay open.
 
 Each colored layer sums measured process SM utilization for a remote UNIX user.
 These process measurements and the GPU total use different sampling windows and

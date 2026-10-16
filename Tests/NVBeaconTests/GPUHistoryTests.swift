@@ -83,7 +83,7 @@ private func reading(_ user: String, _ value: Double?) -> GPUUserUtilizationRead
     #expect(try String(contentsOf: file, encoding: .utf8) == "not json")
 }
 
-@Test func historyPlotBreaksAcrossOfflineAndUnavailableIntervals() {
+@Test func historyPlotConnectsShortMetricDropoutsButNotOfflineIntervals() {
     var samples: [GPUHistorySample] = []
     for (time, users) in [(120.0, [reading("alice", 60)]), (180.0, []),
                           (240.0, [reading("alice", 30)]), (600.0, [reading("alice", 20)])] {
@@ -93,7 +93,7 @@ private func reading(_ user: String, _ value: Double?) -> GPUUserUtilizationRead
     let points = GPUHistoryPlot.points(samples: samples, hours: 1, now: Date(timeIntervalSince1970: 600), pollInterval: 30)
     let alice = points.filter { $0.user == "alice" }
     #expect(alice.count == 3)
-    #expect(Set(alice.map(\.segment)).count == 3)
+    #expect(Set(alice.map(\.segment)).count == 2)
     #expect(points.filter { $0.user == GPUHistoryPlot.totalLabel }.count == 4)
 }
 
@@ -140,7 +140,7 @@ private func reading(_ user: String, _ value: Double?) -> GPUUserUtilizationRead
     #expect(areas[1].upper - areas[1].lower == 55)
 }
 
-@Test func stackedAreasPreserveMissingMetricAndOfflineSegments() {
+@Test func stackedAreasKeepMissingReadingsAndOfflineSegments() {
     var samples: [GPUHistorySample] = []
     for (time, users) in [(120.0, [reading("alice", 60), reading("bob", 20)]),
                           (180.0, [reading("alice", nil), reading("bob", 30)]),
@@ -153,7 +153,7 @@ private func reading(_ user: String, _ value: Double?) -> GPUUserUtilizationRead
     let areas = GPUHistoryPlot.areas(from: points)
     let alice = areas.filter { $0.point.user == "alice" }
     #expect(alice.count == 3)
-    #expect(Set(alice.map { $0.point.segment }).count == 3)
+    #expect(Set(alice.map { $0.point.segment }).count == 2)
     #expect(!areas.contains { $0.point.user == "alice" && $0.point.timestamp == Date(timeIntervalSince1970: 180) })
 }
 
