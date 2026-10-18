@@ -797,6 +797,13 @@ struct GPUReading: Identifiable, Equatable, Sendable {
 struct GPUSnapshot: Equatable, Sendable {
     let takenAt: Date
     let gpus: [GPUReading]
+    let userUtilization: [GPUUserUtilizationReading]
+
+    init(takenAt: Date, gpus: [GPUReading], userUtilization: [GPUUserUtilizationReading] = []) {
+        self.takenAt = takenAt
+        self.gpus = gpus
+        self.userUtilization = userUtilization
+    }
 
     var averageUtilization: Int {
         guard !gpus.isEmpty else { return 0 }
@@ -847,7 +854,7 @@ struct GPUSnapshot: Equatable, Sendable {
             )
         }
 
-        return GPUSnapshot(takenAt: takenAt, gpus: mergedGPUs)
+        return GPUSnapshot(takenAt: takenAt, gpus: mergedGPUs, userUtilization: userUtilization)
     }
 
     func applyingResolvedProcessMetadata(_ processes: [GPUProcessReading]) -> GPUSnapshot {
@@ -875,8 +882,16 @@ struct GPUSnapshot: Equatable, Sendable {
             )
         }
 
-        return GPUSnapshot(takenAt: takenAt, gpus: updatedGPUs)
+        return GPUSnapshot(takenAt: takenAt, gpus: updatedGPUs, userUtilization: userUtilization)
     }
+}
+
+struct GPUUserUtilizationReading: Equatable, Sendable {
+    let gpuIndex: Int
+    let user: String
+    /// Sum of the per-process SM values reported by one `nvidia-smi pmon` sample.
+    /// This is not an exact share of total GPU utilization.
+    let utilization: Double?
 }
 
 struct GPUProcessReading: Identifiable, Equatable, Sendable {

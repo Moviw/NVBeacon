@@ -37,6 +37,10 @@ final class NVBeaconStore: ObservableObject {
     @Published private(set) var notificationHistory = [NotificationHistoryEntry]()
     @Published private(set) var detectedSSHUsername: String?
 
+    @Published private(set) var gpuHistory = [String: [GPUHistorySample]]()
+    @Published private(set) var gpuHistoryErrors = [String: String]()
+    private let historyArchive = GPUHistoryArchive()
+
     private let fetcher: SSHMetricsFetcher
     private let notificationManager: ProcessExitNotificationManager
     private let userDefaults: UserDefaults
@@ -90,6 +94,17 @@ final class NVBeaconStore: ObservableObject {
             : settings.resolvedLanguage.text("Enter an SSH target to start polling.", "SSH target를 입력하면 polling을 시작합니다.")
 
         syncAggregateRuntimeState()
+        Task { [weak self] in
+            guard let self else { return }
+            for server in self.settings.configuredServers {
+                do {
+                    self.gpuHistory[server.id] = try await self.historyArchive.load(
+                        serverID: server.id, fingerprint: server.connectionFingerprint)
+                } catch {
+                    self.gpuHistoryErrors[server.id] = error.localizedDescription
+                }
+            }
+        }
         configurePolling(resetState: false)
         Task { [weak self] in
             await self?.refreshNotificationPermissionState()
@@ -725,7 +740,9 @@ final class NVBeaconStore: ObservableObject {
             for await result in group {
                 switch result {
                 case .success(let serverID, let fetchedSnapshot, let detectedSSHUserID):
-                    guard let state = serverState(for: serverID) else { continue }
+                    guard let state = serverState(for: serverID),
+                          contexts.first(where: { $0.serverID == serverID })?.server.connectionFingerprint == state.server.connectionFingerprint
+                    else { continue }
                     let mergedSnapshot = fetchedSnapshot.mergingResolvedProcessMetadata(from: state.snapshot)
                     updateServerState(serverID) { state in
                         state.snapshot = mergedSnapshot
@@ -735,6 +752,13 @@ final class NVBeaconStore: ObservableObject {
                     }
 
                     if let server = server(for: serverID) {
+                        do {
+                            gpuHistory[serverID] = try await historyArchive.record(
+                                fetchedSnapshot, serverID: serverID, fingerprint: server.connectionFingerprint)
+                            gpuHistoryErrors[serverID] = nil
+                        } catch {
+                            gpuHistoryErrors[serverID] = error.localizedDescription
+                        }
                         let password = currentSessionPassword(for: serverID)
                         await evaluateWatchedProcesses(
                             using: mergedSnapshot,
@@ -951,7 +975,7 @@ final class NVBeaconStore: ObservableObject {
         }
 
         updateServerState(serverID) { state in
-            state.snapshot = GPUSnapshot(takenAt: currentSnapshot.takenAt, gpus: updatedGPUs)
+            state.snapshot = GPUSnapshot(takenAt: currentSnapshot.takenAt, gpus: updatedGPUs, userUtilization: currentSnapshot.userUtilization)
         }
     }
 
@@ -1191,6 +1215,8 @@ final class NVBeaconStore: ObservableObject {
             state.passwordSessionState = synchronizedPasswordSessionState(for: server)
 
             if connectionChanged {
+                gpuHistory[server.id] = []
+                gpuHistoryErrors[server.id] = nil
                 state.snapshot = nil
                 state.detectedSSHUserID = nil
                 state.lastErrorMessage = initialStatusMessage(for: server)

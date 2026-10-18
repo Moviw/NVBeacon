@@ -4,6 +4,7 @@ import Sparkle
 
 enum AppUpdaterAvailability: Equatable {
     case ready
+    case localHistoryBuild
     case requiresAppBundle
     case missingFeedURL
     case missingPublicKey
@@ -16,6 +17,8 @@ enum AppUpdaterAvailability: Equatable {
         switch self {
         case .ready:
             return language.text("Ready", "준비됨")
+        case .localHistoryBuild:
+            return language.text("Local History Build", "로컬 기록 빌드")
         case .requiresAppBundle:
             return language.text("Packaged App Required", "패키징된 앱 필요")
         case .missingFeedURL:
@@ -32,6 +35,8 @@ enum AppUpdaterAvailability: Equatable {
                 "Sparkle is configured and can check for updates.",
                 "Sparkle이 구성되어 있으며 업데이트를 확인할 수 있습니다."
             )
+        case .localHistoryBuild:
+            return language.text("Upstream updates are disabled to preserve the local GPU history feature.", "로컬 GPU 기록 기능을 유지하기 위해 자동 업데이트를 사용하지 않습니다.")
         case .requiresAppBundle:
             return language.text(
                 "Updates are available only when NVBeacon runs from a packaged .app bundle.",
@@ -64,6 +69,10 @@ final class AppUpdater: ObservableObject {
 
     func startIfPossible() {
         guard updaterController == nil else { return }
+        if Bundle.main.object(forInfoDictionaryKey: "NVBeaconLocalHistoryBuild") as? Bool == true {
+            availability = .localHistoryBuild
+            return
+        }
 
         guard Bundle.main.bundleURL.pathExtension == "app" else {
             availability = .requiresAppBundle

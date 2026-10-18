@@ -38,7 +38,11 @@ ICON_NORMALIZED_PATH="$DIST_DIR/.${ICON_NAME}-1024.png"
 ICON_RESOURCE_PATH="$APP_PATH/Contents/Resources/${ICON_NAME}.icns"
 DMGBUILD_SITE_DIR="$ROOT_DIR/.build/packaging-tools/dmgbuild-$DMGBUILD_VERSION"
 DMG_VERIFY_MOUNT_PATH="$DIST_DIR/.distribution-check-mount"
-BIN_PATH="$(swift build -c "$BUILD_CONFIGURATION" --show-bin-path)"
+BUILD_ARGS=()
+if [[ -n "${SDKROOT:-}" ]]; then
+  BUILD_ARGS+=(--sdk "$SDKROOT")
+fi
+BIN_PATH="$(swift build "${BUILD_ARGS[@]}" -c "$BUILD_CONFIGURATION" --show-bin-path)"
 EXECUTABLE_PATH="$BIN_PATH/$PRODUCT_NAME"
 INFO_PLIST_PATH="$APP_PATH/Contents/Info.plist"
 FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"
@@ -189,7 +193,7 @@ rm -rf "$APP_PATH" "$DMG_PATH" "$NOTARIZE_ZIP_PATH" "$DMG_STAGING_DIR" "$DMG_BAC
 mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources" "$FRAMEWORKS_DIR"
 
 echo "Building $BUILD_CONFIGURATION binary..."
-swift build -c "$BUILD_CONFIGURATION" --product "$PRODUCT_NAME"
+swift build "${BUILD_ARGS[@]}" -c "$BUILD_CONFIGURATION" --product "$PRODUCT_NAME"
 
 if [[ ! -x "$EXECUTABLE_PATH" ]]; then
   echo "Expected executable not found at $EXECUTABLE_PATH" >&2
@@ -212,6 +216,11 @@ generate_app_icon
 ICON_PLIST_ENTRY=""
 if [[ -f "$ICON_RESOURCE_PATH" ]]; then
   ICON_PLIST_ENTRY=$'  <key>CFBundleIconFile</key>\n  <string>'"$ICON_NAME"$'</string>\n'
+fi
+
+LOCAL_HISTORY_ENTRY=""
+if [[ "${LOCAL_HISTORY_BUILD:-0}" == "1" ]]; then
+  LOCAL_HISTORY_ENTRY=$'  <key>NVBeaconLocalHistoryBuild</key>\n  <true/>\n'
 fi
 
 SPARKLE_PUBLIC_KEY_ENTRY=""
@@ -256,7 +265,7 @@ ${ICON_PLIST_ENTRY}  <key>CFBundleIdentifier</key>
   <integer>86400</integer>
   <key>SUAllowsAutomaticUpdates</key>
   <true/>
-${SPARKLE_PUBLIC_KEY_ENTRY}</dict>
+${SPARKLE_PUBLIC_KEY_ENTRY}${LOCAL_HISTORY_ENTRY}</dict>
 </plist>
 EOF
 

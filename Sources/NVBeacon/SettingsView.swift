@@ -105,6 +105,11 @@ struct SettingsView: View {
                     Label(t("Notifications", "알림"), systemImage: "bell.badge")
                 }
 
+            historyPane
+                .tabItem {
+                    Label(t("History", "기록"), systemImage: "chart.xyaxis.line")
+                }
+
             appearancePane
                 .tabItem {
                     Label(t("Appearance", "표시"), systemImage: "menubar.rectangle")
@@ -157,6 +162,24 @@ struct SettingsView: View {
                     "비밀번호 기반 인증은 비밀번호를 Keychain에 저장한 뒤, 한 번 해제하면 현재 앱 세션 동안 메모리에 유지합니다. 이는 SSH 키 기반 인증보다 덜 안전하므로 키 기반 인증을 사용할 수 없을 때만 권장됩니다."
                 )
             )
+        }
+    }
+
+    private var historyPane: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                ForEach(store.serverStates) { state in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(state.server.displayName, systemImage: "server.rack").font(.headline)
+                        GPUHistoryView(store: store, state: state)
+                    }
+                }
+                if store.serverStates.isEmpty {
+                    Text(t("Configure a server to begin recording GPU history.", "GPU 기록을 시작하려면 서버를 설정하세요."))
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

@@ -159,3 +159,40 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 - [Best README Template](https://github.com/othneildrew/Best-README-Template) for the structural inspiration
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Local user-utilization history
+
+The menu bar popover includes **GPU history by user** under each server. Expand it,
+choose a GPU, and switch between 1h, 5h, 12h, and 24h. Click or drag the chart to
+inspect the plotted averages. The 1h view retains minute detail; 5h, 12h, and 24h
+use 3-, 6-, and 12-minute means. Incomplete or gapped intervals retain minute
+detail. Hover readouts use a prepared snapshot and binary search without
+rebuilding chart marks. Time-window changes use a short eased transition and
+respect Reduce Motion. The same charts are available in Settings → History.
+Colored stacked areas with line boundaries show the sum of measured process SM
+utilization for each remote UNIX user; the thin solid gray line shows GPU utilization.
+These measurements use different sampling windows and are not exact shares of the
+gray total. SM sums can exceed 100% for overlapping processes. Unsupported metrics
+are shown as unavailable, never estimated from VRAM.
+
+Sampling uses `nvidia-smi pmon -s u -c 1` and a read-only PID owner lookup within the
+existing SSH refresh. No remote installation or privileged command is required.
+History is retained locally for 24 hours in
+`~/Library/Application Support/com.leejaein.NVBeacon/GPUHistory/`, with minute
+averages and private file permissions. Relaunching preserves history. Offline and long unsupported intervals are gaps. During live refreshes, measured
+points up to three minutes apart can connect across a short per-user dropout;
+missing readings still show as unavailable. History before installation is unavailable.
+
+For this local build, upstream automatic updates are disabled so they cannot
+replace the custom feature. Existing servers and settings use the original bundle ID.
+
+On Command Line Tools 27 without the SwiftUI macro plugin, use the installed 26.5
+SDK (no global toolchain changes):
+
+```sh
+swift test --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk \
+  -Xswiftc -load-plugin-library \
+  -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk \
+  SKIP_DMG=1 LOCAL_HISTORY_BUILD=1 VERSION=0.5.0-history.5 ./scripts/package_app.sh
+```
